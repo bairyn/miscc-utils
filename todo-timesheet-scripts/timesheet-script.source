@@ -1,0 +1,124 @@
+# Source this in your .zshrc.
+
+# ########
+# START timesheet script.
+# ########
+
+# Feedback: optionally print tail of timesheet after changing it.
+# Enable by setting to exactly ‘1’.
+DEFAULT_TIMESHEET_FEEDBACK="1"
+TIMESHEET_FEEDBACK="${TIMESHEET_FEEDBACK:-"${DEFAULT_TIMESHEET_FEEDBACK}"}"
+
+# Internally called after adding to a timesheet.
+#timesheet-feedback() { if [ "x${TIMESHEET_FEEDBACK:-"0"}" != "x1" ]; then :; else tail -- "${TIMESHEET_PATH}"; fi; }
+timesheet-feedback() { if [ "x${TIMESHEET_FEEDBACK:-"0"}" != "x1" ]; then :; else tail -- "${TIMESHEET_PATH}" && printf '%s\n' "" && timesheet-hledger balance -p today; fi; }
+
+# WHITESPACE: Normally, as usual, 2+ spaces separates account from description.
+# The raw variants directly forward whitespace with the basic shell
+# functionality of joining with one space for line.  The vanilla variant uses
+# raw but adds a bit more sophisticated whitespace handling, where the first
+# entry argument is taken to be the account name, and a double space is
+# automatically added after it.  For good habits, we recommend calling
+# ‘add-entry’ with the double space anyway, even though the shell treats 1 and
+# 2 spaces between different arguments the same, often effectively reducing
+# multiple spaces to just 1 (it just splits them into separate arguments no
+# matter how many spaces are in them, and just drops those spaces, so utilities
+# like ‘echo’ that join arguments often do so just by adding a single space, as
+# the argument separation information coming in was lost, at least through
+# straightforward means.)
+#
+# Path to (direct, not ultimate) current timesheet.
+# Used as the path to the file to modify, which can be a symlink to work like a switch.
+DEFAULT_TIMESHEET_PATH="${HOME}/timesheet/timesheet-switch.tc"
+TIMESHEET_PATH="${TIMESHEET_PATH:-"${DEFAULT_TIMESHEET_PATH}"}"
+# Path to the default symlink that points to the (ultimate, not direct) current timesheet.
+# Used for changing the symlink to switch current timesheet.
+DEFAULT_TIMESHEET_SWITCH_PATH="${HOME}/timesheet/timesheet-switch.tc"
+TIMESHEET_SWITCH_PATH="${TIMESHEET_PATH:-"${DEFAULT_TIMESHEET_PATH}"}"
+#export TIMESHEET_PATH
+add-entry-raw-line() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 LINE" 1>&2; return 1; else printf '%s\n' "$*" >> "${TIMESHEET_PATH}" && timesheet-feedback; fi; }
+add-entry-raw() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 INOUTCOL [ENTRY]" 1>&2; return 1; else local a1=""; a1="$1" && shift && add-entry-raw-line "$a1 $(date -- "+%F") $(date -- "+%T")${1+" $*"}"; fi; }
+add-entry() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 INOUTCOL [ACCOUNT  [DESCRIPTION]]" 1>&2; return 1; else if [ "$#" -le "2" ]; then add-entry-raw "$@"; else local a1="" a2=""; a1="$1" && shift && a2="$1" && shift && add-entry-raw "$a1" "$a2" '' "$@"; fi; fi; }
+add-entry-to() { if ! [ "$#" -ge "2" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 2 <= argc ($#) <= inf; usage: $0 TIMESHEET_PATH INOUTCOL [ACCOUNT  [DESCRIPTION]]" 1>&2; return 1; else local a1=""; a1="$1" && shift && TIMESHEET_PATH="$a1" add-entry "$@"; fi; }
+in-() { add-entry i "$@"; }
+# (Not all shells support this syntax, but zsh does.)
+in() { in- "$@"; }
+out() { add-entry o "$@"; }
+
+in-to() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 TIMESHEET_PATH [ACCOUNT  [DESCRIPTION]]" 1>&2; return 1; else local a1=""; a1="$1" && shift && add-entry-to "$a1" "i" "$@"; fi; }
+out-to() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 TIMESHEET_PATH [ACCOUNT  [DESCRIPTION]]" 1>&2; return 1; else local a1=""; a1="$1" && shift && add-entry-to "$a1" "o" "$@"; fi; }
+
+# Convenient alias for interruptions.
+DEFAULT_INTERRUPTION_ACCOUNT="admin:misc:interruption"
+INTERRUPTION_ACCOUNT="${INTERRUPTION_ACCOUNT:-"${DEFAULT_INTERRUPTION_ACCOUNT}"}"
+alias i=int
+int() { out; in- "${INTERRUPTION_ACCOUNT}" "$@"; }
+
+# Composite utilities.
+
+# NOTE: ‘switch’ clocks out and in to switch, not to be confused with the
+# separate timesheet switching functionality.  For the latter see
+# ‘set-timesheet’.
+
+# switch: If clocked in, clock out and clock into the given account.  Not be
+# confused with ‘switch-timesheet’.
+switch() { out && in- "$@"; }
+switch-to() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 TIMESHEET_PATH [ACCOUNT  [DESCRIPTION]]" 1>&2; return 1; else local a1=""; a1="$1" && shift && out-to "$a1" && in-to "$a1" "$@"; fi; }
+switch-account() { switch "$@"; }
+
+# Collections of time sheets.
+# Make sure the shell supports this and has the right options set for this
+# to update the global variable, or else you'll have to find another method.
+_set-timesheet-direct() { if ! [ "$#" -ge "1" -a "$#" -le "1" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= 1; usage: $0 TIMESHEET_PATH" 1>&2; return 1; else TIMESHEET_PATH="$*"; timesheet-feedback; fi; }
+set-timesheet-global() { if ! [ "$#" -ge "1" -a "$#" -le "2" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= 2; usage: $0 TIMESHEET_PATH [TIMESHEET_SWITCH_PATH]" 1>&2; return 1; else ln -nsf -- "$1" "${2-"${TIMESHEET_SWITCH_PATH}"}"; timesheet-feedback; fi; }
+set-timesheet() { set-timesheet-global "$@"; }
+switch-timesheet() { set-timesheet "$@"; }
+
+# Convenient aliases to switch the timesheet.
+# WARNING: unsanitized variables.
+alias timesheet-oss="set-timesheet ${HOME}/timesheet/timesheet-oss.tc"
+alias timesheet-misc="set-timesheet ${HOME}/timesheet/timesheet-misc.tc"
+alias timesheet-life="set-timesheet ${HOME}/timesheet/timesheet-life.tc"
+
+# You can shorten a subset of these aliases for convenience.
+alias oss="timesheet-oss"
+alias misc="timesheet-oss"
+alias life="timesheet-life"
+
+# Finally, adding notes entries, in a comment.
+timesheet-note() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 NOTE" 1>&2; return 1; else add-entry-raw-line "; - note: $*"; fi; }
+timesheet-note-to() { if ! [ "$#" -ge "2" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 2 <= argc ($#) <= inf; usage: $0 TIMESHEET_PATH NOTE" 1>&2; return 1; else local a1=""; a1="$1" && shift && TIMESHEET="$a1" add-entry-raw-line "; - $*"; fi; }
+
+# You can shorten a subset of these aliases for convenience.
+alias note="timesheet-note"
+alias note-to="timesheet-note-to"
+
+# Helpful edit alias to pull it up.
+DEFAULT_TIMESHEET_EDITOR="${EDITOR:-"vim"}"
+TIMESHEET_EDITOR="${TIMESHEET_EDITOR:-"${DEFAULT_TIMESHEET_EDITOR}"}"
+DEFAULT_TIMESHEET_EDITOR_ARGS=""
+TIMESHEET_EDITOR_ARGS="${TIMESHEET_EDITOR_ARGS:-"${DEFAULT_TIMESHEET_EDITOR_ARGS}"}"
+timesheet-edit-basic() { "${TIMESHEET_EDITOR}" ${TIMESHEET_EDITOR_ARGS} "${TIMESHEET_PATH}"; }
+timesheet-edit-old() { if ! [ "$#" -ge "0" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 0 <= argc ($#) <= inf; usage: $0 [TIMESHEET_PATH [TIMESHEET_EDITOR_ARGS]]" 1>&2; return 1; else if [ "$#" -le "1" ]; then "${TIMESHEET_EDITOR}" "${1:-"${TIMESHEET_PATH}"}"; else local a1=""; a1="$1" && shift && "${TIMESHEET_EDITOR}" ${2-${TIMESHEET_EDITOR_ARGS}} "$@" "${TIMESHEET_PATH}"; fi; fi; }
+timesheet-edit() { if ! [ "$#" -ge "0" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 0 <= argc ($#) <= inf; usage: $0 [TIMESHEET_PATH] [TIMESHEET_EDITOR_ARGS]" 1>&2; return 1; else if [ "$#" -le "1" ]; then "${TIMESHEET_EDITOR}" "${1:-"${TIMESHEET_PATH}"}"; else local a1=""; a1="$1" && shift && "${TIMESHEET_EDITOR}" ${2-${TIMESHEET_EDITOR_ARGS}} "$@" "${a1:-"${TIMESHEET_PATH}"}"; fi; fi; }
+timesheet-edit-args() { timesheet-edit '' "$@"; }
+alias te="timesheet-edit"
+alias tea="timesheet-edit-args"
+
+# hledger interface.  If needed, process through an interface, and pipe a copy
+# over to hledger to operate on.
+timesheet-hledger-path() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 TIMESHEET_PATH [HLEDGER_ARGS]" 1>&2; return 1; else local a1=""; a1="$1" && shift && TIMESHEET_PATH="$a1" timesheet-hledger "$@"; fi; }
+timesheet-hledger() { if ! [ "$#" -ge "0" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 0 <= argc ($#) <= inf; usage: $0 HLEDGER_ARGS" 1>&2; return 1; else cat - < "${TIMESHEET_PATH}" | timesheet-hledger-preprocess | hledger -f "timeclock:-" "$@"; fi; }
+# Postprocess: remove comments, then optionally reformat date, but hledger
+# accepts the original format.
+timesheet-hledger-preprocess-filter() { sed -nEe '{ /^\s*(;|$)/b; }; p; b; ' | sed -nEe '{ /^([^[:space:]]+[[:space:]]+)([[:digit:]]+)-([[:digit:]]+)-([[:digit:]]+)(($|[[:space:]]+).*)$/s@@\1\2-\3-\4\5@g; }; p; b' | tee $(: -a debug-timesheet-hledge-preprocess.0.out.tmp) | cat; }
+timesheet-hledger-preprocess-preserve-notes() { sed -nEe '{ ; }; p; b; ' | tee $(: -a debug-timesheet-hledge-preprocess.0.out.tmp) | cat; }
+# Note: hledger appears to ignore the comments containing the note directives
+# anyway, so while it's preserved in the preprocessing stage, to also preserve
+# it through hledger print, you'd need to do more work to re-add those notes.
+timesheet-hledger-preprocess() { timesheet-hledger-preprocess-preserve-notes "$@"; }
+alias th="timesheet-hledger"
+
+# ########
+# END timesheet script.
+# ########

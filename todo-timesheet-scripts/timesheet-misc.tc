@@ -1,0 +1,25 @@
+; misc timesheet.
+
+; https://hledger.org/1.28/hledger.html#time-periods
+; timeclock format, with semicolon and empty-line comments.
+; If conversion to alternative formats is needed, this is meant to be
+; structured enough and well enough to make that convenient.
+;
+; I considered adding a nonoseconds component, but decided while you could,
+; probably I'd prefer the other trade-off to save space and complexity, and
+; also maybe there's not quite that much value in _that_ much precisiion for
+; this particular thing.
+;
+; The following script lets you charge e.g. ‘my:account  description’ to clock
+; in.  (Msg in in vs out?  Plan vs what you did?  You could do both, and if
+; needed simple unix text processing utilities like sed and awk can automate
+; fixing the format if needed.)
+;
+; In zsh, can add to .zshrc (normally use "$@" to preserve quoting and
+; arguments, but to whitespace join to embed in a single argument use ‘"…$*…"’):
+;
+; source …/path/to/timesheet-script.source
+;
+; then as needed manually adjust those lines, and the aliases can help more
+; conveniently automate these things.
+
