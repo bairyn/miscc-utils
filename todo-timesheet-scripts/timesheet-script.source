@@ -77,9 +77,12 @@ switch-timesheet() { set-timesheet "$@"; }
 
 # Convenient aliases to switch the timesheet.
 # WARNING: unsanitized variables.
-alias timesheet-oss="set-timesheet ${HOME}/timesheet/timesheet-oss.tc"
-alias timesheet-misc="set-timesheet ${HOME}/timesheet/timesheet-misc.tc"
-alias timesheet-life="set-timesheet ${HOME}/timesheet/timesheet-life.tc"
+TIMESHEET_SWITCH1_PATH="${HOME}/timesheet/timesheet-switch.tc"
+TIMESHEET1_PATH="${HOME}/timesheet/timesheet-switch.tc"
+# Note: for zsh you can use ‘${(q)MY_VAR}’ to quote, and for bash you can use ‘${MY_VAR@Q}’ to quote TIMESHEET_SWITCH1_PATH.
+alias timesheet-oss="TIMESHEET_SWITCH_PATH=${TIMESHEET_SWITCH1_PATH} && TIMESHEET_PATH=${TIMESHEET1_PATH} && set-timesheet timesheet-oss.tc"
+alias timesheet-misc="TIMESHEET_SWITCH_PATH=${TIMESHEET_SWITCH1_PATH} && TIMESHEET_PATH=${TIMESHEET1_PATH} && set-timesheet timesheet-misc.tc"
+alias timesheet-life="TIMESHEET_SWITCH_PATH=${TIMESHEET_SWITCH1_PATH} && TIMESHEET_PATH=${TIMESHEET1_PATH} && set-timesheet timesheet-life.tc"
 
 # You can shorten a subset of these aliases for convenience.
 alias oss="timesheet-oss"
@@ -109,15 +112,17 @@ alias tea="timesheet-edit-args"
 # hledger interface.  If needed, process through an interface, and pipe a copy
 # over to hledger to operate on.
 timesheet-hledger-path() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 TIMESHEET_PATH [HLEDGER_ARGS]" 1>&2; return 1; else local a1=""; a1="$1" && shift && TIMESHEET_PATH="$a1" timesheet-hledger "$@"; fi; }
-timesheet-hledger() { if ! [ "$#" -ge "0" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 0 <= argc ($#) <= inf; usage: $0 HLEDGER_ARGS" 1>&2; return 1; else cat - < "${TIMESHEET_PATH}" | timesheet-hledger-preprocess | hledger -f "timeclock:-" "$@"; fi; }
+timesheet-hledger() { if ! [ "$#" -ge "0" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 0 <= argc ($#) <= inf; usage: $0 HLEDGER_ARGS" 1>&2; return 1; else cat - < "${TIMESHEET_PATH}" | timesheet-hledger-preprocess | hledger -f "timeclock:-" "print" | timesheet-hledger-postprocess | hledger -f "-" "$@"; fi; }
 # Postprocess: remove comments, then optionally reformat date, but hledger
 # accepts the original format.
-timesheet-hledger-preprocess-filter() { sed -nEe '{ /^\s*(;|$)/b; }; p; b; ' | sed -nEe '{ /^([^[:space:]]+[[:space:]]+)([[:digit:]]+)-([[:digit:]]+)-([[:digit:]]+)(($|[[:space:]]+).*)$/s@@\1\2-\3-\4\5@g; }; p; b' | tee $(: -a debug-timesheet-hledge-preprocess.0.out.tmp) | cat; }
-timesheet-hledger-preprocess-preserve-notes() { sed -nEe '{ ; }; p; b; ' | tee $(: -a debug-timesheet-hledge-preprocess.0.out.tmp) | cat; }
+timesheet-hledger-preprocess-filter() { sed -nEe '{ /^\s*(;|$)/b; }; p; b; ' | sed -nEe '{ /^([^[:space:]]+[[:space:]]+)([[:digit:]]+)-([[:digit:]]+)-([[:digit:]]+)(($|[[:space:]]+).*)$/s@@\1\2-\3-\4\5@g; }; p; b' | tee $(: -a debug-timesheet-hledger-preprocess.0.out.tmp) | cat; }
+timesheet-hledger-preprocess-preserve-notes() { sed -nEe '{ ; }; p; b; ' | tee $(: -a debug-timesheet-hledger-preprocess.0.out.tmp) | cat; }
 # Note: hledger appears to ignore the comments containing the note directives
 # anyway, so while it's preserved in the preprocessing stage, to also preserve
 # it through hledger print, you'd need to do more work to re-add those notes.
 timesheet-hledger-preprocess() { timesheet-hledger-preprocess-preserve-notes "$@"; }
+timesheet-hledger-postprocess-extra() { local extra_path="" extra_path_pre=""; extra_path_pre="$(realpath -m -- "${TIMESHEET_PATH}")"; extra_path="${extra_path_pre%%.tc}-extra.hledger"; if ! [[ -e "${extra_path}" ]]; then cat; else cat - "${extra_path}"; fi; }
+timesheet-hledger-postprocess() { timesheet-hledger-postprocess-extra; }
 alias th="timesheet-hledger"
 
 # Directory aliases.

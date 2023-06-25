@@ -1,0 +1,13 @@
+; Example:
+;2023-06-15 transaction summary: manually charge 8h.
+;	(admin:misc:my account)  8h
+
+2023-05-29 New hire, prorated weekdays rounded based on 200h annual, for 119h; 80h SL; remaining 13d=104H HL: 10days HL for 80 HL for future.
+	(available:admin:leave:holiday:bjohnson)    80h
+	(available:admin:leave:annual:bjohnson)    119h
+	(available:admin:leave:sick:bjohnson)       80h
+	(available:admin:leave:unpaid:bjohnson)   9999h  ; Unlimited.
+
+2023-05-29 Memorial day.
+	available:admin:leave:holiday:bjohnson     == 74h
+	admin:leave:holiday:bjohnson            8h

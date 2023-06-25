@@ -1,4 +1,4 @@
-; misc timesheet.
+; Misc timesheet.
 
 ; https://hledger.org/1.28/hledger.html#time-periods
 ; timeclock format, with semicolon and empty-line comments.
