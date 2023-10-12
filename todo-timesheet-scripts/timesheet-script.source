@@ -136,12 +136,14 @@ alias tcd="in-timesheet-dir"
 timesheet-time() {
 	if ! [ "$#" -ge "3" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 3 <= argc ($#) <= inf; usage: $0 ACCOUNT  DESCRIPTION  CMD [CMD_ARGS…]" 1>&2; return 1
 	else
-		local account="" message=""
-		account="$1" && shift
-		message="$1" && shift
-		in "$account"  "$message"
-		"$@"
-		out "$account"
+		: && \
+			local account="" message="" && \
+			account="$1" && shift && \
+			message="$1" && shift && \
+			in "$account"  "$message" && \
+			"$@" && \
+			out "$account" && \
+			:
 	fi
 }
 alias tt="timesheet-time"
@@ -150,11 +152,13 @@ alias tt="timesheet-time"
 timesheet-time-nomsg() {
 	if ! [ "$#" -ge "2" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 2 <= argc ($#) <= inf; usage: $0 ACCOUNT  CMD [CMD_ARGS…]" 1>&2; return 1
 	else
-		local account=""
-		account="$1" && shift
-		in "$account"
-		"$@"
-		out "$account"
+		: && \
+			local account="" && \
+			account="$1" && shift && \
+			in "$account" && \
+			"$@" && \
+			out "$account" && \
+			:
 	fi
 }
 alias tts="timesheet-time-nomsg"
