@@ -90,8 +90,8 @@ alias misc="timesheet-oss"
 alias life="timesheet-life"
 
 # Finally, adding notes entries, in a comment.
-timesheet-note() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 NOTE" 1>&2; return 1; else add-entry-raw-line "; - note: $(date -- "+%T") $*"; fi; }
-timesheet-note-to() { if ! [ "$#" -ge "2" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 2 <= argc ($#) <= inf; usage: $0 TIMESHEET_PATH NOTE" 1>&2; return 1; else local a1=""; a1="$1" && shift && TIMESHEET="$a1" add-entry-raw-line "; - $(date -- "+%T") $*"; fi; }
+timesheet-note() { if ! [ "$#" -ge "1" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 1 <= argc ($#) <= inf; usage: $0 NOTE" 1>&2; return 1; else add-entry-raw-line "; - note: $(date -- "+%F %T") $*"; fi; }
+timesheet-note-to() { if ! [ "$#" -ge "2" -a "$#" -ge "0" ]; then printf '%s\n' "Error: needs 2 <= argc ($#) <= inf; usage: $0 TIMESHEET_PATH NOTE" 1>&2; return 1; else local a1=""; a1="$1" && shift && TIMESHEET="$a1" add-entry-raw-line "; - $(date -- "+%F %T") $*"; fi; }
 
 # You can shorten a subset of these aliases for convenience.
 alias note="timesheet-note"
